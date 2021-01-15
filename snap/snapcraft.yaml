@@ -1,0 +1,158 @@
+#
+# To build:
+#
+# Using multipass, one should enable a large multipass VM using:
+#
+#   SNAPCRAFT_BUILD_ENVIRONMENT_MEMORY=8G snapcraft --enable-experimental-package-repositories
+#
+# To install:
+#
+#   sudo snap install --classic tracetb
+#
+name: tracetb
+summary: tracetb holds your favorite trace tools and scripts
+description: Trace toolbox holds favorite trace tools and scripts
+  in a snap. Use it to troubleshoot your network, storage, etc.
+
+confinement: classic
+grade: stable
+base: core20
+architectures: [amd64, arm64]
+assumes: [snapd2.37]
+adopt-info: bpftrace
+
+# Needed for focal-proposed and llvm/clang-11
+package-repositories:
+  - type: apt
+    formats: [deb, deb-src]
+    components: [main, multiverse, restricted, universe]
+    suites: [focal-proposed]
+    key-id: C5986B4F1257FFA86632CBA746181433FBB75451
+    url: http://archive.ubuntu.com/ubuntu
+
+parts:
+    conntracker:
+        source: https://github.com/rafaeldtinoco/conntracker.git
+        source-branch: main
+        plugin: nil
+        override-build: |
+          sudo apt install -y libnetfilter-conntrack-dev libmnl-dev libglib2.0-dev pkg-config libnftnl-dev
+          make
+          cp conntracker $SNAPCRAFT_PRIME/usr/bin/conntracker-bin
+          wget https://raw.githubusercontent.com/phvalguima/trace-tools/main/networking/conntracker --output-document=$SNAPCRAFT_PRIME/usr/bin/conntracker
+
+    bcclibs3:
+        source: https://github.com/iovisor/bcc.git
+        source-tag: v0.17.0
+        plugin: cmake
+        cmake-parameters:
+            - -DLLVM_DEFINITIONS="-D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS"
+            - -DREVISION_LAST=v0.17.0
+            - -DBCC_KERNEL_HAS_SOURCE_DIR=1
+            - -DPYTHON_CMD='python2;python3'
+            - -DCMAKE_BUILD_PARALLEL_LEVEL=1
+            - -DCMAKE_INSTALL_PREFIX=/usr
+            # https://github.com/iovisor/bpftrace/issues/1585
+            - -DENABLE_LLVM_SHARED=ON
+        override-pull: |
+          snapcraftctl pull
+          sed -i "s;if os.environ.get('DESTDIR'):;if \"sdist\" not in sys.argv and os.environ.get('DESTDIR'):;" src/python/setup.py.in
+        build-packages:
+            - python
+            - git
+            - libc6
+            - iperf
+            - bison
+            - cmake
+            - flex
+            - g++
+            - binutils-dev
+            - libstdc++-dev
+            - libelf-dev
+            - zlib1g-dev
+            - libfl-dev
+            - clang-11
+            - libclang-11-dev
+            - libclang-common-11-dev
+            - libclang1-11
+            - libllvm11
+            - llvm-11
+            - llvm-11-dev
+            - llvm-11-runtime
+            - systemtap-sdt-dev
+            - netperf
+            - python3
+            - arping
+            - clang-format
+            - ethtool
+            - inetutils-ping
+            - libedit-dev
+            - libzip-dev
+            - libluajit-5.1-dev
+            - luajit
+            - python3-netaddr
+            - python3-pyroute2
+            - python3-distutils
+    bpftrace:
+        after:
+            - bcclibs3
+        source: https://github.com/phvalguima/bpftrace.git
+        source-tag: snap-0.11.4
+        plugin: cmake
+        cmake-parameters:
+            - -DCMAKE_BUILD_TYPE=Release
+            - -DLIBBCC_INCLUDE_DIRS=$SNAPCRAFT_STAGE/usr/include/
+            - -DLIBBCC_LIBRARIES=$SNAPCRAFT_STAGE/usr/lib/x86_64-linux-gnu/libbcc.so
+            - -DCMAKE_INSTALL_PREFIX=
+        override-pull: |
+            snapcraftctl pull
+            description=$(git describe HEAD --tags)
+            sha=$(echo $description | tr '-' ' ' | awk '{print $NF}')
+            version=${description%$sha}
+            commits=$(git log --oneline | wc -l)
+            date=$(date +'%Y%m%d')
+            version=$(echo $version$date-$commits-$sha | cut -c1-32)
+            snapcraftctl set-version "$version"
+        build-packages:
+          - bison
+          - cmake
+          - flex
+          - g++
+          - git
+          - libelf-dev
+          - zlib1g-dev
+          - libfl-dev
+          - systemtap-sdt-dev
+          - binutils-dev
+          - llvm-11-dev
+          - llvm-11-runtime
+          - libclang-11-dev
+          - clang-11
+        stage-packages:
+          - libbinutils
+          - libclang1-11
+          - libllvm11
+apps:
+    bpftrace:
+        command: bin/bpftrace
+        plugs: [ home, system-trace ]
+    conntracker:
+        command: usr/bin/conntracker
+    conntracker-bin:
+        command: usr/bin/conntracker-bin
+    ucalls:
+        command: usr/share/bcc/tools/lib/ucalls
+        plugs: [ home, system-trace ]
+    uflow:
+        command: usr/share/bcc/tools/lib/uflow
+        plugs: [ home, system-trace ]
+    ugc:
+        command: usr/share/bcc/tools/lib/ugc
+        plugs: [ home, system-trace ]
+    ustat:
+        command: usr/share/bcc/tools/lib/ustat
+        plugs: [ home, system-trace ]
+    uthreads:
+        command: usr/share/bcc/tools/lib/uthreads
+        plugs: [ home, system-trace ]
+

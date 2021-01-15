@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "Enabling nfnetlink_log for iptables logging"
+echo "Check /proc/sys/net/netfilter/nf_log/2 and /proc/sys/net/netfilter/nf_log/10"
+
+modprobe nfnetlink_log
+echo nfnetlink_log | sudo tee /proc/sys/net/netfilter/nf_log/2
+echo nfnetlink_log | sudo tee /proc/sys/net/netfilter/nf_log/10
+
+tracetb.conntracker-bin "$@"
