@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if [ "$(readlink /usr/bin/bpftrace)" = "/snap/bin/tracetb.bpftrace" ]; then
+	rm /usr/bin/bpftrace
+fi

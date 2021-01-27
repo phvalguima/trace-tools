@@ -37,9 +37,11 @@ parts:
         plugin: nil
         override-build: |
           sudo apt install -y libnetfilter-conntrack-dev libmnl-dev libglib2.0-dev pkg-config libnftnl-dev
+          ./configure
           make
-          cp conntracker $SNAPCRAFT_PRIME/usr/bin/conntracker-bin
-          wget https://raw.githubusercontent.com/phvalguima/trace-tools/main/networking/conntracker --output-document=$SNAPCRAFT_PRIME/usr/bin/conntracker
+          make install
+        override-prime: |
+          cp /usr/local/bin/conntracker $SNAPCRAFT_PRIME/usr/bin/conntracker
 
     bcclibs3:
         source: https://github.com/iovisor/bcc.git
@@ -93,6 +95,10 @@ parts:
             - python3-netaddr
             - python3-pyroute2
             - python3-distutils
+        stage-packages:
+          - libbinutils
+          - libclang1-11
+          - libllvm11
     bpftrace:
         after:
             - bcclibs3
@@ -138,21 +144,3 @@ apps:
         plugs: [ home, system-trace ]
     conntracker:
         command: usr/bin/conntracker
-    conntracker-bin:
-        command: usr/bin/conntracker-bin
-    ucalls:
-        command: usr/share/bcc/tools/lib/ucalls
-        plugs: [ home, system-trace ]
-    uflow:
-        command: usr/share/bcc/tools/lib/uflow
-        plugs: [ home, system-trace ]
-    ugc:
-        command: usr/share/bcc/tools/lib/ugc
-        plugs: [ home, system-trace ]
-    ustat:
-        command: usr/share/bcc/tools/lib/ustat
-        plugs: [ home, system-trace ]
-    uthreads:
-        command: usr/share/bcc/tools/lib/uthreads
-        plugs: [ home, system-trace ]
-

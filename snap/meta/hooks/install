@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo "blabla"
+
+if [ -z "$(which bpftrace)" ]; then 
+	echo "Installing link for /usr/bin/bpftrace"
+	ln -s /snap/bin/tracetb.bpftrace /usr/bin/bpftrace
+else
+	echo "bpftrace binary found, dynamic link from:"
+        echo "/snap/bin/tracetb.bpftrace to /snap/bin/bpftrace"
+	echo "won't be created." 
+	echo "Please remove it or use tracetb.bpftrace instead"
+fi
